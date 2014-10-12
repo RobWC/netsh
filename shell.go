@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"strings"
 )
 
@@ -13,15 +14,17 @@ import (
 //Base structure for the shell
 type Shell struct {
 	prompt      string
-	currentLine []rune
-	commands    []Command
+	currentLine []byte
+	commands    map[string]Command
 }
 
 //NewShell Create an initialized shell struct
 func NewShell(prompt string) *Shell {
-	var newCommands []Command
-	newCommands[0] = Command{Name: "foo", Description: "bar", HelpText: "Eat the foo at the bar"}
-	return &Shell{prompt: prompt, currentLine: make([]rune, 0), commands: newCommands}
+	var newCommands map[string]Command
+	newCommands = make(map[string]Command)
+	newCommands["foo"] = Command{Name: "foo", Description: "foo1", HelpText: "Eat the foo at the bar"}
+	newCommands["bar"] = Command{Name: "bar", Description: "bar1", HelpText: "Eat the bar at the show"}
+	return &Shell{prompt: prompt, currentLine: make([]byte, 0), commands: newCommands}
 }
 
 //SetPrompt set the prompt of the shell
@@ -37,9 +40,18 @@ func (sh *Shell) SetPrompt(prompt string) {
 func (sh *Shell) processCommands() {
 	fmt.Println(string(sh.currentLine))
 	commands := strings.Split(string(sh.currentLine), " ")
+	if len(commands) > 0 {
+		re := regexp.MustCompile(commands[0] + ".*")
+		for key := range sh.commands {
+			if re.FindString(key) != "" {
+				fmt.Println(sh.commands[key].Name, "-", sh.commands[key].HelpText)
+			}
+		}
+	}
 	for item := range commands {
 		fmt.Println("Command", commands[item])
-		sh.currentLine = make([]rune, 0)
+		//Reset current line
+		sh.currentLine = make([]byte, 0)
 	}
 }
 
@@ -47,14 +59,18 @@ func (sh *Shell) nextCommand(command []rune) {
 
 }
 
-func (sh *Shell) processChar(b rune) {
+func (sh *Shell) processChar(b byte) {
+	//fmt.Println("Byte", b)
 	if b == Tab {
 		//tab
 		//fmt.Print(string(b))
-	} else if b == NewLine {
-		fmt.Print(string(b))
 		sh.processCommands()
 		sh.outputPrompt()
+		sh.outputCurrentline()
+	} else if b == NewLine {
+		sh.processCommands()
+		sh.outputPrompt()
+		sh.outputCurrentline()
 	} else if b == Space {
 		//space
 		sh.currentLine = append(sh.currentLine, b)
@@ -68,6 +84,10 @@ func (sh *Shell) processChar(b rune) {
 //outputPrompt print a new prompt to stdoutF
 func (sh *Shell) outputPrompt() {
 	fmt.Printf("%s", sh.prompt)
+}
+
+func (sh *Shell) outputCurrentline() {
+	fmt.Printf("%s", sh.currentLine)
 }
 
 //Start start the shell in interactive mode
@@ -89,10 +109,8 @@ func (sh *Shell) Start() {
 	}()
 
 	sh.outputPrompt()
-	var b []byte
 	for {
-		os.Stdin.Read(b)
-		r, _, _ := reader.ReadRune()
+		r, _ := reader.ReadByte()
 		sh.processChar(r)
 
 	}
