@@ -1,10 +1,12 @@
 package netsh
 
 var (
-	//Tab rune
-	Tab byte = 0x9
-	//NewLine rune
+	//Tab byte
+	Tab byte = 9
+	//NewLine byte
 	NewLine byte = 10
-	//Space rune
+	//Space byte
 	Space byte = 4
+	//Backspace byte
+	Backspace byte = 127
 )

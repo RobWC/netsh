@@ -7,24 +7,34 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"sort"
 	"strings"
 )
 
 //Shell A shell that is used to process user input and commands
 //Base structure for the shell
 type Shell struct {
-	prompt      string
-	currentLine []byte
-	commands    map[string]Command
+	prompt       string
+	currentLine  []byte
+	commands     map[string]Command
+	commandOrder []string
 }
 
 //NewShell Create an initialized shell struct
 func NewShell(prompt string) *Shell {
 	var newCommands map[string]Command
 	newCommands = make(map[string]Command)
+	var order []string
+
 	newCommands["foo"] = Command{Name: "foo", Description: "foo1", HelpText: "Eat the foo at the bar"}
 	newCommands["bar"] = Command{Name: "bar", Description: "bar1", HelpText: "Eat the bar at the show"}
-	return &Shell{prompt: prompt, currentLine: make([]byte, 0), commands: newCommands}
+	newCommands["foof"] = Command{Name: "foof", Description: "foof1", HelpText: "Eat the foof"}
+
+	for key := range newCommands {
+		order = append(order, key)
+	}
+	sort.Strings(order)
+	return &Shell{prompt: prompt, currentLine: make([]byte, 0), commandOrder: order, commands: newCommands}
 }
 
 //SetPrompt set the prompt of the shell
@@ -37,22 +47,20 @@ func (sh *Shell) SetPrompt(prompt string) {
 // If the command is valid it is executed.
 // If the command is invalid the command help is returned
 // If the command is incomple, complete it
-func (sh *Shell) processCommands() {
-	fmt.Println(string(sh.currentLine))
+func (sh *Shell) processCommands(clear bool) {
 	commands := strings.Split(string(sh.currentLine), " ")
 	if len(commands) > 0 {
-		re := regexp.MustCompile(commands[0] + ".*")
-		for key := range sh.commands {
-			if re.FindString(key) != "" {
-				fmt.Println(sh.commands[key].Name, "-", sh.commands[key].HelpText)
+		re := regexp.MustCompile(regexp.QuoteMeta(commands[0]) + ".*")
+		for key := range sh.commandOrder {
+			if re.FindString(sh.commands[sh.commandOrder[key]].Name) != "" {
+				fmt.Println(sh.commands[sh.commandOrder[key]].Name, "-", sh.commands[sh.commandOrder[key]].HelpText)
 			}
 		}
 	}
-	for item := range commands {
-		fmt.Println("Command", commands[item])
-		//Reset current line
+	if clear {
 		sh.currentLine = make([]byte, 0)
 	}
+
 }
 
 func (sh *Shell) nextCommand(command []rune) {
@@ -64,13 +72,13 @@ func (sh *Shell) processChar(b byte) {
 	if b == Tab {
 		//tab
 		//fmt.Print(string(b))
-		sh.processCommands()
-		sh.outputPrompt()
-		sh.outputCurrentline()
+		//sh.processCommands(false)
+		//sh.outputPrompt()
+		//sh.outputCurrentline()
 	} else if b == NewLine {
-		sh.processCommands()
-		sh.outputPrompt()
-		sh.outputCurrentline()
+		//sh.processCommands(true)
+		//sh.outputPrompt()
+		//sh.outputCurrentline()
 	} else if b == Space {
 		//space
 		sh.currentLine = append(sh.currentLine, b)
@@ -87,7 +95,8 @@ func (sh *Shell) outputPrompt() {
 }
 
 func (sh *Shell) outputCurrentline() {
-	fmt.Printf("%s", sh.currentLine)
+	fmt.Println("FOOD", string(sh.currentLine[:len(sh.currentLine)]))
+	fmt.Printf("%s%s", sh.prompt, string(sh.currentLine[:]))
 }
 
 //Start start the shell in interactive mode
